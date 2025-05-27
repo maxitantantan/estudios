@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Planificador Diario Completo</title>
+<style>
+  /* Reset & base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #f0f0f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+    transition: background-color 0.5s ease, color 0.5s ease;
+  }
+  h1 {
+    font-weight: 900;
+    font-size: 2.5rem;
+    margin-bottom: 0.25rem;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  p.subtitle {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    opacity: 0.85;
+    user-select: none;
+  }
+  #current-date {
+    font-weight: 700;
+    margin-bottom: 1.75rem;
+    font-size: 1.25rem;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    user-select: none;
+  }
+
+  #planner {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 1.5rem 2rem 2rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    max-width: 600px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  form#task-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 0.8rem 1rem;
+    align-items: center;
+  }
+  form#task-form label {
+    font-size: 0.9rem;
+    color: #ddd;
+    user-select: none;
+  }
+  form#task-form input[type="text"],
+  form#task-form textarea,
+  form#task-form input[type="time"],
+  form#task-form input[type="date"],
+  form#task-form select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: rgba(255,255,255,0.2);
+    color: #f0f0f0;
+    resize: vertical;
+    outline-offset: 2px;
+    transition: background-color 0.3s ease;
+  }
+  form#task-form input[type="text"]:focus,
+  form#task-form textarea:focus,
+  form#task-form input[type="time"]:focus,
+  form#task-form input[type="date"]:focus,
+  form#task-form select:focus {
+    background: rgba(255,255,255,0.35);
+  }
+  form#task-form textarea {
+    grid-column: 1 / 6;
+    min-height: 3.3rem;
+    max-height: 6rem;
+  }
+  button.add-btn {
+    grid-row: 1 / 4;
+    background-color: #ff6f91;
+    color: white;
+    border: none;
+    padding: 0 1.5rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    transition: background-color 0.3s ease;
+    align-self: stretch;
+    justify-self: center;
+  }
+  button.add-btn:hover {
+    background-color: #ff4e75;
+  }
+
+  /* Filters for task list */
+  #filters {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    user-select: none;
+  }
+  #filters button {
+    background: transparent;
+    border: 2px solid rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.8);
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease,color 0.3s ease;
+  }
+  #filters button.active,
+  #filters button:hover {
+    background: #ff6f91;
+    border-color: #ff6f91;
+    color: white;
+  }
+
+  ul.task-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+  ul.task-list::-webkit-scrollbar {
+    width: 8px;
+  }
+  ul.task-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 111, 145, 0.6);
+    border-radius: 4px;
+  }
+  li.task-item {
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    box-shadow: 0 4px 10px rgba(255,111,145,0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.3s ease;
+  }
+  li.task-item.completed {
+    background: rgba(50, 50, 50, 0.3);
+  }
+  li.task-item.completed .task-title {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+  .task-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .task-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #f0f0f0;
+    overflow-wrap: break-word;
+    flex: 1 1 60%;
+  }
+  .task-time-date {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #ff6f91;
+    min-width: 120px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    flex: 1 1 35%;
+  }
+  .task-desc {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    color: #eee;
+    white-space: pre-wrap;
+    max-height: 3.5rem;
+    overflow: hidden;
+  }
+  .task-meta {
+    display: flex;
+    justify-content: flex-start;
+    gap: 1rem;
+    margin-top: 0.3rem;
+    opacity: 0.7;
+    font-size: 0.85rem;
+    user-select: none;
+  }
+  .priority {
+    padding: 0 0.6rem;
+    border-radius: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+  }
+  .priority.low {
+    background: #6ee7b7;
+    color: #064e3b;
+  }
+  .priority.medium {
+    background: #fdba74;
+    color: #7c2d12;
+  }
+  .priority.high {
+    background: #f87171;
+    color: #7f1d1d;
+  }
+  .task-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+  }
+  button.complete-btn,
+  button.edit-btn,
+  button.delete-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    color: #eee;
+    font-size: 1.15rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    user-select: none;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  button.complete-btn:hover {
+    color: #4ade80;
+    font-weight: 900;
+  }
+  button.edit-btn:hover {
+    color: #ffd46b;
+  }
+  button.delete-btn:hover {
+    color: #ef4444;
+  }
+
+  /* Task editing modal */
+  #modal-overlay {
+    background: rgba(0,0,0,0.8);
+    position: fixed;
+    display: none;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  #modal-overlay.active {
+    display: flex;
+  }
+  #modal {
+    background: #222533;
+    border-radius: 16px;
+    max-width: 480px;
+    min-width: 320px;
+    padding: 2rem;
+    box-shadow: 0 8px 20px rgba(255,111,145,0.5);
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  #modal h2 {
+    margin: 0 0 1rem;
+    font-weight: 900;
+    font-size: 1.75rem;
+    text-align: center;
+  }
+  #modal form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0.8rem 1rem;
+  }
+  #modal label {
+    font-size: 1rem;
+    color: #ddd;
+    user-select: none;
+  }
+  #modal input[type="text"],
+  #modal textarea,
+  #modal input[type="time"],
+  #modal input[type="date"],
+  #modal select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: rgba(255,255,255,0.15);
+    color: #eee;
+    resize: vertical;
+    outline-offset: 2px;
+    transition: background-color 0.3s ease;
+  }
+  #modal textarea {
+    grid-column: 1 / 5;
+    min-height: 4rem;
+    max-height: 8rem;
+  }
+  #modal input[type="text"]:focus,
+  #modal textarea:focus,
+  #modal input[type="time"]:focus,
+  #modal input[type="date"]:focus,
+  #modal select:focus {
+    background: rgba(255,255,255,0.35);
+  }
+  #modal-buttons {
+    grid-column: 1 / 5;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+  button#modal-save, button#modal-cancel {
+    font-weight: 700;
+    font-size: 1rem;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 0.6rem 1.3rem;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+  button#modal-save {
+    background-color: #4ade80;
+    color: #1a202c;
+  }
+  button#modal-save:hover {
+    background-color: #22c55e;
+  }
+  button#modal-cancel {
+    background-color: #ef4444;
+    color: white;
+  }
+  button#modal-cancel:hover {
+    background-color: #dc2626;
+  }
+
+  /* Task footer */
+  #task-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    user-select: none;
+  }
+  #task-stats {
+    font-weight: 600;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+  #clear-completed {
+    background-color: #ef4444;
+    border: none;
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+  }
+  #clear-completed:hover:enabled {
+    background-color: #dc2626;
+  }
+  #clear-completed:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Animations */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  li.task-item {
+    animation: slideIn 0.3s ease forwards;
+  }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    body {
+      padding: 1rem 0.5rem 3rem;
+    }
+    #planner {
+      max-width: 100%;
+      padding: 1rem 1rem 1.5rem;
+    }
+    form#task-form {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(7, auto);
+      gap: 0.6rem 0;
+    }
+    button.add-btn {
+      grid-row: auto;
+      grid-column: auto;
+      width: 100%;
+    }
+    #modal {
+      min-width: unset;
+      width: 90vw;
+      padding: 1.5rem;
+    }
+  }
+</style>
+</head>
+<body>
+  <h1>
+    Planificador Diario
+  </h1>
+  <p class="subtitle">Organiza tus tareas, horarios y prioridades del día</p>
+  <div id="current-date" aria-live="polite" aria-atomic="true"></div>
+
+  <section id="planner" aria-label="Planificador diario de tareas">
+    <form id="task-form" aria-label="Formulario para agregar nueva tarea" autocomplete="off">
+      <label for="task-title">Título</label>
+      <input type="text" id="task-title" name="task-title" aria-required="true" placeholder="Título de la tarea" maxlength="80" required />
+
+      <label for="task-priority">Prioridad</label>
+      <select id="task-priority" name="task-priority" aria-label="Seleccionar prioridad">
+        <option value="low">Baja</option>
+        <option value="medium" selected>Media</option>
+        <option value="high">Alta</option>
+      </select>
+
+      <label for="task-date-assigned">Fecha asignada</label>
+      <input type="date" id="task-date-assigned" name="task-date-assigned" aria-label="Fecha asignada a la tarea" readonly/>
+
+      <label for="task-date-due">Fecha para realizar</label>
+      <input type="date" id="task-date-due" name="task-date-due" aria-label="Fecha para realizar la tarea" />
+
+      <label for="task-time-due">Hora para realizar</label>
+      <input type="time" id="task-time-due" name="task-time-due" aria-label="Hora para realizar la tarea" />
+
+      <label for="task-desc">Descripción (opcional)</label>
+      <textarea id="task-desc" name="task-desc" rows="2" placeholder="Detalles adicionales..."></textarea>
+
+      <button class="add-btn" type="submit" aria-label="Agregar tarea">AGREGAR</button>
+    </form>
+
+    <nav id="filters" role="tablist" aria-label="Filtro de tareas">
+      <button role="tab" aria-selected="true" class="active" id="filter-all">Todas</button>
+      <button role="tab" aria-selected="false" id="filter-today">Hoy</button>
+      <button role="tab" aria-selected="false" id="filter-pending">Pendientes</button>
+      <button role="tab" aria-selected="false" id="filter-completed">Completadas</button>
+    </nav>
+
+    <ul id="task-list" class="task-list" aria-live="polite" aria-atomic="true" tabindex="0"></ul>
+
+    <div id="task-footer">
+      <div id="task-stats" aria-live="polite"></div>
+      <button id="clear-completed" aria-label="Eliminar todas las tareas completadas" disabled>Eliminar Completadas</button>
+    </div>
+  </section>
+
+  <!-- Edit Modal -->
+  <div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div id="modal">
+      <h2 id="modal-title">Editar Tarea</h2>
+      <form id="edit-form" autocomplete="off">
+        <label for="edit-title">Título</label>
+        <input type="text" id="edit-title" name="edit-title" maxlength="80" required />
+
+        <label for="edit-priority">Prioridad</label>
+        <select id="edit-priority" name="edit-priority" aria-label="Seleccionar prioridad">
+          <option value="low">Baja</option>
+          <option value="medium">Media</option>
+          <option value="high">Alta</option>
+        </select>
+
+        <label for="edit-date-assigned">Fecha asignada</label>
+        <input type="date" id="edit-date-assigned" name="edit-date-assigned" aria-label="Fecha asignada a la tarea" readonly/>
+
+        <label for="edit-date-due">Fecha para realizar</label>
+        <input type="date" id="edit-date-due" name="edit-date-due" />
+
+        <label for="edit-time-due">Hora para realizar</label>
+        <input type="time" id="edit-time-due" name="edit-time-due" />
+
+        <label for="edit-desc">Descripción (opcional)</label>
+        <textarea id="edit-desc" name="edit-desc" rows="3"></textarea>
+
+        <div id="modal-buttons">
+          <button type="submit" id="modal-save">Guardar</button>
+          <button type="button" id="modal-cancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script>
+  (() => {
+    // Elements
+    const form = document.getElementById('task-form');
+    const titleInput = document.getElementById('task-title');
+    const priorityInput = document.getElementById('task-priority');
+    const dateAssignedInput = document.getElementById('task-date-assigned');
+    const dateDueInput = document.getElementById('task-date-due');
+    const timeDueInput = document.getElementById('task-time-due');
+    const descInput = document.getElementById('task-desc');
+
+    const list = document.getElementById('task-list');
+    const taskStats = document.getElementById('task-stats');
+    const clearBtn = document.getElementById('clear-completed');
+    const currentDateEl = document.getElementById('current-date');
+
+    const filters = document.getElementById('filters');
+    const filterButtons = filters.querySelectorAll('button');
+
+    // Modal
+    const modalOverlay = document.getElementById('modal-overlay');
+    const editForm = document.getElementById('edit-form');
+    const editTitle = document.getElementById('edit-title');
+    const editPriority = document.getElementById('edit-priority');
+    const editDateAssigned = document.getElementById('edit-date-assigned');
+    const editDateDue = document.getElementById('edit-date-due');
+    const editTimeDue = document.getElementById('edit-time-due');
+    const editDesc = document.getElementById('edit-desc');
+    const modalSave = document.getElementById('modal-save');
+    const modalCancel = document.getElementById('modal-cancel');
+
+    const STORAGE_KEY = 'planificadorTareas';
+    let tasks = [];
+    let filter = 'all'; // all, today, pending, completed
+    let editIndex = null;
+
+    // Compute today date string in YYYY-MM-DD Uruguay timezone
+    // Uruguay is UTC-3 no DST currently, we offset accordingly
+    function getUruguayTodayISO() {
+      const now = new Date();
+      // Get UTC time and subtract 3 hours to get Uruguay time
+      const uruguayTimestamp = now.getTime() - (3 * 60 * 60 * 1000);
+      const uruguayDate = new Date(uruguayTimestamp);
+      // Restore hours/min to midnight in Uruguay date:
+      uruguayDate.setUTCHours(0,0,0,0);
+      return uruguayDate.toISOString().slice(0,10);
+    }
+
+    // Format date DD/MM/YYYY for display
+    function formatDateDisplay(d) {
+      if(!d) return '';
+      try {
+        const dateObject = new Date(d + 'T00:00:00');
+        return dateObject.toLocaleDateString('es-ES', {
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+      } catch {
+        return d;
+      }
+    }
+
+    // Format time HH:MM display
+    function formatTimeDisplay(t) {
+      if(!t) return '';
+      // 24h default
+      return t;
+    }
+
+    // Update the header current date in Uruguay timezone
+    function updateCurrentDate() {
+      const uruguayDateString = getUruguayTodayISO();
+      const displayStr = formatDateDisplay(uruguayDateString);
+      currentDateEl.textContent = `Hoy es ${displayStr}`;
+    }
+
+    // Set the "fecha asignada" input to today on load
+    function setAssignedDateToToday() {
+      const todayISO = getUruguayTodayISO();
+      dateAssignedInput.value = todayISO;
+      dateAssignedInput.min = todayISO;
+    }
+
+    // Load tasks from localStorage
+    function loadTasks() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if(saved) {
+        try {
+          tasks = JSON.parse(saved);
+        } catch {
+          tasks = [];
+        }
+      } else {
+        tasks = [];
+      }
+    }
+
+    // Save tasks to localStorage
+    function saveTasks() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    }
+
+    // Sort tasks by dateDue then timeDue then assigned date
+    function sortTasks() {
+      tasks.sort((a,b) => {
+        // Tasks without 'dateDue' go last
+        if(!a.dateDue && !b.dateDue) return 0;
+        if(!a.dateDue) return 1;
+        if(!b.dateDue) return -1;
+        // Compare dates
+        if(a.dateDue !== b.dateDue) return a.dateDue.localeCompare(b.dateDue);
+        // Compare times
+        if(!a.timeDue && !b.timeDue) return 0;
+        if(!a.timeDue) return 1;
+        if(!b.timeDue) return -1;
+        if(a.timeDue !== b.timeDue) return a.timeDue.localeCompare(b.timeDue);
+        // Finally compare assigned date
+        if(!a.dateAssigned && !b.dateAssigned) return 0;
+        if(!a.dateAssigned) return 1;
+        if(!b.dateAssigned) return -1;
+        return a.dateAssigned.localeCompare(b.dateAssigned);
+      });
+    }
+
+    // Filter tasks reflecting current filter
+    function getFilteredTasks() {
+      const todayUruguay = getUruguayTodayISO();
+      switch(filter) {
+        case 'pending':
+          return tasks.filter(t => !t.completed);
+        case 'completed':
+          return tasks.filter(t => t.completed);
+        case 'today':
+          return tasks.filter(t => t.dateDue === todayUruguay);
+        default:
+          return tasks;
+      }
+    }
+
+    // Render tasks list
+    function renderTasks() {
+      list.innerHTML = '';
+      sortTasks();
+      const filteredTasks = getFilteredTasks();
+      filteredTasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'task-item' + (task.completed ? ' completed' : '');
+        li.setAttribute('tabindex', '0');
+        li.setAttribute('role', 'listitem');
+
+        const topDiv = document.createElement('div');
+        topDiv.className = 'task-top';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'task-title';
+        titleSpan.textContent = task.title;
+        topDiv.appendChild(titleSpan);
+
+        const timeDateSpan = document.createElement('span');
+        timeDateSpan.className = 'task-time-date';
+        let timeDateText = '';
+        if(task.dateDue) timeDateText += formatDateDisplay(task.dateDue);
+        if(task.timeDue) {
+          if(timeDateText.length) timeDateText += ' - ';
+          timeDateText += formatTimeDisplay(task.timeDue);
+        }
+        timeDateSpan.textContent = timeDateText;
+        topDiv.appendChild(timeDateSpan);
+
+        li.appendChild(topDiv);
+
+        if(task.desc && task.desc.trim() !== '') {
+          const descDiv = document.createElement('div');
+          descDiv.className = 'task-desc';
+          descDiv.textContent = task.desc;
+          li.appendChild(descDiv);
+        }
+
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'task-meta';
+        const prioritySpan = document.createElement('span');
+        prioritySpan.className = 'priority ' + task.priority;
+        prioritySpan.textContent = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+        metaDiv.appendChild(prioritySpan);
+
+        const assignedDateSpan = document.createElement('span');
+        assignedDateSpan.style.fontSize = '0.85rem';
+        assignedDateSpan.style.opacity = '0.7';
+        assignedDateSpan.textContent = task.dateAssigned ? `Asignada: ${formatDateDisplay(task.dateAssigned)}` : '';
+        metaDiv.appendChild(assignedDateSpan);
+
+        li.appendChild(metaDiv);
+
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'task-actions';
+
+        const completeBtn = document.createElement('button');
+        completeBtn.className = 'complete-btn';
+        completeBtn.type = 'button';
+        completeBtn.title = task.completed ? 'Marcar como pendiente' : 'Marcar como completada';
+        completeBtn.textContent = task.completed ? '✓' : '○';
+        completeBtn.addEventListener('click', () => toggleComplete(tasks.indexOf(task)));
+        actionsDiv.appendChild(completeBtn);
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.type = 'button';
+        editBtn.title = 'Editar tarea';
+        editBtn.textContent = '✎';
+        editBtn.addEventListener('click', () => openEditModal(tasks.indexOf(task)));
+        actionsDiv.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.type = 'button';
+        deleteBtn.title = 'Eliminar tarea';
+        deleteBtn.textContent = '✕';
+        deleteBtn.addEventListener('click', () => deleteTask(tasks.indexOf(task)));
+        actionsDiv.appendChild(deleteBtn);
+
+        li.appendChild(actionsDiv);
+
+        list.appendChild(li);
+      });
+      updateTaskStats();
+      clearBtn.disabled = !tasks.some(t => t.completed);
+    }
+
+    // Update stats text
+    function updateTaskStats() {
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.completed).length;
+      const pending = total - completed;
+      taskStats.textContent = `Tareas: ${total} | Completadas: ${completed} | Pendientes: ${pending}`;
+    }
+
+    // Add new task
+    function addTask(task) {
+      tasks.push(task);
+      saveTasks();
+      renderTasks();
+    }
+
+    // Toggle completion state
+    function toggleComplete(index) {
+      if(index >= 0 && index < tasks.length) {
+        tasks[index].completed = !tasks[index].completed;
+        saveTasks();
+        renderTasks();
+      }
+    }
+
+    // Delete task
+    function deleteTask(index) {
+      if(index >= 0 && index < tasks.length) {
+        tasks.splice(index,1);
+        saveTasks();
+        renderTasks();
+      }
+    }
+
+    // Clear completed tasks button
+    clearBtn.addEventListener('click', () => {
+      tasks = tasks.filter(t => !t.completed);
+      saveTasks();
+      renderTasks();
+      titleInput.focus();
+    });
+
+    // Filters buttons event listeners
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', e => {
+        filterButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        e.target.classList.add('active');
+        e.target.setAttribute('aria-selected', 'true');
+        switch(e.target.id) {
+          case 'filter-all': filter = 'all'; break;
+          case 'filter-today': filter = 'today'; break;
+          case 'filter-pending': filter = 'pending'; break;
+          case 'filter-completed': filter = 'completed'; break;
+          default: filter = 'all';
+        }
+        renderTasks();
+      });
+    });
+
+    // Handle form submission to add task
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      // Compose new task using form inputs
+      const newTask = {
+        title: titleInput.value.trim(),
+        priority: priorityInput.value,
+        dateAssigned: dateAssignedInput.value || getUruguayTodayISO(),
+        dateDue: dateDueInput.value || null,
+        timeDue: timeDueInput.value || null,
+        desc: descInput.value.trim(),
+        completed: false
+      };
+
+      if(!newTask.title) {
+        alert('El título es obligatorio');
+        return;
+      }
+
+      addTask(newTask);
+      form.reset();
+      // Reset assigned date to today after clear
+      setAssignedDateToToday();
+
+      titleInput.focus();
+    });
+
+    // Modal edit logic
+    function openEditModal(index) {
+      if(index < 0 || index >= tasks.length) return;
+      editIndex = index;
+      const task = tasks[index];
+      editTitle.value = task.title;
+      editPriority.value = task.priority;
+      editDateAssigned.value = task.dateAssigned || getUruguayTodayISO();
+      editDateDue.value = task.dateDue || '';
+      editTimeDue.value = task.timeDue || '';
+      editDesc.value = task.desc || '';
+      modalOverlay.classList.add('active');
+      editTitle.focus();
+    }
+    function closeEditModal() {
+      modalOverlay.classList.remove('active');
+      editIndex = null;
+      editForm.reset();
+    }
+    modalCancel.addEventListener('click', e => {
+      e.preventDefault();
+      closeEditModal();
+    });
+    modalOverlay.addEventListener('click', e => {
+      if(e.target === modalOverlay) {
+        closeEditModal();
+      }
+    });
+    editForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if(editIndex === null) return;
+      const title = editTitle.value.trim();
+      if(!title) {
+        alert('El título es obligatorio');
+        return;
+      }
+      tasks[editIndex].title = title;
+      tasks[editIndex].priority = editPriority.value;
+      tasks[editIndex].dateAssigned = editDateAssigned.value || getUruguayTodayISO();
+      tasks[editIndex].dateDue = editDateDue.value || null;
+      tasks[editIndex].timeDue = editTimeDue.value || null;
+      tasks[editIndex].desc = editDesc.value.trim();
+      saveTasks();
+      renderTasks();
+      closeEditModal();
+    });
+
+    // Save tasks on page unload
+    window.addEventListener('beforeunload', () => {
+      saveTasks();
+    });
+
+    // Initialize page
+    updateCurrentDate();
+    setAssignedDateToToday();
+    loadTasks();
+    renderTasks();
+  })();
+</script>
+</body>
+</html>
+
